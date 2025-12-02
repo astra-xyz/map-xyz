@@ -2,43 +2,56 @@ import io
 import os
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
-from reportlab.lib.colors import grey
+from reportlab.lib.colors import Color
 
-def create_grid_for_page(page, grid_interval=50, line_color=grey, line_width=0.5):
+def create_grid_for_page(page, grid_interval=50, line_width=0.5):
     """
-    Creates a PDF overlay with a grid and coordinates for a specific page object.
+    Creates a PDF overlay for a specific page with a grid and coordinates on all four sides.
     """
     # Get the dimensions from the page's media box
     width = float(page.mediabox.width)
     height = float(page.mediabox.height)
 
     packet = io.BytesIO()
-    # Create a new PDF canvas with the same dimensions as the page
     can = canvas.Canvas(packet, pagesize=(width, height))
 
+    # --- 1. Set Custom Grid Color ---
+    # Convert RGB (0-255) to a 0-1 scale for reportlab
+    grid_color = Color(0/255, 116/255, 166/255)
+
     # Set grid style
-    can.setStrokeColor(line_color)
+    can.setStrokeColor(grid_color)
+    can.setFillColor(grid_color) # Set text color as well
     can.setLineWidth(line_width)
     can.setFont("Helvetica", 8)
 
-    # Draw vertical lines and labels
+    # --- 2. Draw Grid and Dual-Axis Labels ---
+
+    # Draw vertical lines and labels (Top and Bottom)
     for x in range(0, int(width), grid_interval):
         if x > 0:
             can.line(x, 0, x, height)
+        
         label = chr(ord('A') + (x // grid_interval))
+        # Bottom label
         can.drawString(x + 5, 5, label)
+        # Top label
+        can.drawString(x + 5, height - 15, label)
 
-    # Draw horizontal lines and labels
+    # Draw horizontal lines and labels (Left and Right)
     for y in range(0, int(height), grid_interval):
         if y > 0:
             can.line(0, y, width, y)
+            
         label = str((y // grid_interval) + 1)
+        # Left label
         can.drawString(5, y + 5, label)
+        # Right label
+        can.drawString(width - 20, y + 5, label)
 
     can.save()
     packet.seek(0)
     
-    # Return the grid as a readable PDF object
     return PdfReader(packet)
 
 
@@ -54,19 +67,13 @@ def add_grid_to_all_pages(input_pdf, output_pdf, grid_interval=50):
 
         writer = PdfWriter()
 
-        # Iterate over all pages in the original PDF
         for page in original_pdf.pages:
-            # Create a grid overlay specifically for the current page's dimensions
             grid_overlay_pdf = create_grid_for_page(page, grid_interval)
             
             # Merge the grid overlay onto the page
-            # The grid is merged in the background (underneath the original content)
             page.merge_page(grid_overlay_pdf.pages[0])
-            
-            # Add the modified page to the writer
             writer.add_page(page)
 
-        # Write the final result to the output file
         with open(output_pdf, "wb") as f:
             writer.write(f)
         
@@ -96,8 +103,6 @@ if __name__ == "__main__":
             output_filename = f"{base_name}_grid.pdf"
             output_path = os.path.join(output_dir, output_filename)
             
-            # Process the file, adding the grid to all pages
             add_grid_to_all_pages(input_path, output_path, grid_interval=grid_spacing)
             
     print("\nBatch processing complete.")
-
