@@ -34,7 +34,6 @@ def create_grid_for_page(page, config):
     can.setFont("Helvetica", 8)
 
     # --- 2. Draw Grid and Correctly Oriented Labels ---
-
     # X-AXIS LABELS (A, B, C...) - Top and Bottom, drawn HORIZONTALLY.
     for x in range(0, int(width), grid_interval):
         if x > 0: can.line(x, 0, x, height)
@@ -48,11 +47,8 @@ def create_grid_for_page(page, config):
         if y > 0: can.line(0, y, width, y)
         label = str((y // grid_interval) + 1)
         mid_point_y = y + (grid_interval / 2)
-        
-        # --- THIS IS THE FIX ---
-        # Draw labels horizontally without rotation.
-        can.drawCentredString(15, mid_point_y, label) # Left label
-        can.drawCentredString(width - 15, mid_point_y, label) # Right label
+        can.drawCentredString(15, mid_point_y, label)
+        can.drawCentredString(width - 15, mid_point_y, label)
 
     # --- 3. Add the Correctly Oriented (Horizontal) Logo ---
     try:
@@ -90,10 +86,16 @@ def process_pdf_file(input_path, output_path, config):
 
         for page in original_pdf.pages:
             grid_overlay_pdf = create_grid_for_page(page, config)
+
             land_width = float(page.mediabox.height)
             land_height = float(page.mediabox.width)
+
             new_page = writer.add_blank_page(width=land_width, height=land_height)
-            op = Transformation().rotate(90).translate(tx=land_width, ty=0)
+
+            # --- THIS IS THE FIX ---
+            # This transformation correctly rotates the page 90 degrees CLOCKWISE.
+            op = Transformation().rotate(270).translate(tx=0, ty=page.mediabox.width)
+
             new_page.merge_transformed_page(page, op)
             new_page.merge_page(grid_overlay_pdf.pages[0])
 
